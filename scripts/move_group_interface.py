@@ -51,9 +51,9 @@ class MoveGroupInterface(object):
 
         # Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         # to one group of joints.  In this case the group is the joints in the UR5e
-        # arm so we set ``group_name = ur5e``. If you are using a different robot,
+        # arm so we set ``group_name = manipulator``. If you are using a different robot,
         # you should change this value to the name of your robot arm planning group.
-        # This interface can be used to plan and execute motions on the Panda:
+        # This interface can be used to plan and execute motions on the UR5e:
         group_name = "manipulator"
         group = moveit_commander.MoveGroupCommander(group_name)
 

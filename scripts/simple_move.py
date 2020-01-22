@@ -9,6 +9,7 @@ import sys
 import copy
 
 import moveit_commander
+from moveit_commander.conversions import pose_to_list
 import moveit_msgs.msg
 import geometry_msgs.msg
 # from math import pi
@@ -97,14 +98,15 @@ class MoveGroupTest(object):
         current_pose = self.group.get_current_pose().pose
         return all_close(pose, current_pose, 0.01)
 
-    def go(pose_goal):
-        '''Takes a pose and computes a linear path and executes it'''
-        (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
-        if fraction == 1.0:
-            plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-            arm.followTrajectory(plan_positions, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
-        else:
-            print('Trajectory not feasible. Fraction: {}'.format(fraction))
+#    def go(pose_goal):
+#        '''Takes a pose and computes a linear path and executes it'''
+#        (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
+#       if fraction == 1.0:
+#            plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
+#           arm.followTrajectory(plan_positions, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
+#        else:
+#            print('Trajectory not feasible. Fraction: {}'.format(fraction))
+
 
 def moveit_cart_plan_to_traj_list(plan):
     '''Iterates through a plan object to get just the position outputs

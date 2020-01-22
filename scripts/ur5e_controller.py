@@ -178,15 +178,15 @@ class Arm:
         # set speed to 0.0
         self.publishVelocities(self.createJointVelocitiesDict(np.zeros(6)))
 
-    def brakeSmooth(self, command, thresh=1e-6):
-        diff = np.sum(command)
-
-        while np.max(np.abs(command)) > thresh:
-            t0 = time()
-            command = gamma*command
-            self.publishVelocities(self.createJointVelocitiesDict(command))
-            sleepTime = 0.008
-            rospy.sleep(sleepTime)
+#    def brakeSmooth(self, command, thresh=1e-6):
+#        diff = np.sum(command)
+#
+#        while np.max(np.abs(command)) > thresh:
+#            t0 = time()
+#            command = gamma*command
+#            self.publishVelocities(self.createJointVelocitiesDict(command))
+#            sleepTime = 0.008
+#            rospy.sleep(sleepTime)
 
     def brake(self, command, gamma, thresh=1e-6):
         while max(np.abs(command)) > thresh:
