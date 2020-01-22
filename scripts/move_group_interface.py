@@ -32,10 +32,10 @@ def all_close(goal, actual, tolerance):
     return True
 
 
-class MoveGroupInterface(object):
+class MoveGroupInterfaceTutorial(object):
 
     def __init__(self):
-        super(MoveGroupInterface, self).__init__()
+        super(MoveGroupInterfaceTutorial, self).__init__()
 
         ## SETUP
         # First initialize `moveit_commander`_ and a `rospy`_ node:
@@ -186,7 +186,7 @@ def main():
         print "============ Press `Enter` to begin the tutorial by " \
               "setting up the moveit_commander (press ctrl-d to exit) ..."
         raw_input()
-        interface = MoveGroupInterface()
+        interface = MoveGroupInterfaceTutorial()
 
         print "============ Press `Enter` to execute a movement using a joint state goal ..."
         raw_input()

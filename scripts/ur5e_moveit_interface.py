@@ -37,10 +37,26 @@ def all_close(goal, actual, tolerance):
     return True
 
 
-class Ur5eInterface(object):
+def moveit_cart_plan_to_traj_list(plan):
+    '''
+    Iterates through a plan object to get just the position outputs
+    Input:
+        plan object from "compute_cartesian_path()"
+    Output:
+        plan_positions - list of joint positions to execute plan
+    '''
+    # Cycle through trajectory and extract positions.
+    plan_positions = []  # List of tuples of joint positions
+    points = plan.joint_trajectory.points
+    for point in points:
+        plan_positions.append(point.positions)
+    return plan_positions
+
+
+class MoveGroupInterface(object):
 
     def __init__(self):
-        super(Ur5eInterface, self).__init__()
+        super(MoveGroupInterface, self).__init__()
 
         ### SETUP ###
         # First initialize `moveit_commander` and `rospy` node
@@ -80,13 +96,13 @@ class Ur5eInterface(object):
         print "============ End effector: %s" % eef_link
 
         # Get a list of all the groups in the robot.
-        group_names = robot.get_group_names()
-        print "============ Robot Groups: ", robot.get_group_names()
+        # group_names = robot.get_group_names()
+        # print "============ Robot Groups: ", robot.get_group_names()
 
         # Print the entire state of the robot for debugging.
-        print "============ Printing robot state"
-        print robot.get_current_state()
-        print ""
+        # print "============ Printing robot state"
+        # print robot.get_current_state()
+        # print ""
 
         # Misc variable
         self.robot = robot
@@ -95,4 +111,4 @@ class Ur5eInterface(object):
         self.display_trajectory_publisher = display_trajectory_publisher
         self.planning_frame = planning_frame
         self.eef_link = eef_link
-        self.group_names = group_names
+        # self.group_names = group_names
