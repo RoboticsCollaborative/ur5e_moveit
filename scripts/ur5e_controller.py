@@ -12,6 +12,8 @@ from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import geometry_msgs.msg as geometry_msgs
 
+from rdda_interface.srv import CheckContact
+
 # ur_kinematics (IK)
 #import ur_kin_py
 #from ur_kinematics import ur_kin_py
@@ -32,6 +34,7 @@ class Arm:
         self.joint_limits = np.zeros((2,6))
         self.joint_limits[0,:] = -np.pi
         self.joint_limits[1,:] = np.pi
+        self.gripper_contact = [0, 0]
         # self.robot.SetDOFLimits(self.joint_limits[0], self.joint_limits[1])
 
         # Ordering of joints.
@@ -133,8 +136,11 @@ class Arm:
 
         for i, target in enumerate(traj):
 
-            if i >100:
+            gripper_contact = self.getGripperContactFlag(need_check=1)
+            if gripper_contact[0] == 1 or gripper_contact[1] == 1:
                 break
+            # if i >100:
+            #     break
 
             error = target - self.jointValues
 
@@ -246,6 +252,15 @@ class Arm:
         for i in range(len(velocities)):
             dict_out[self.joint_names_speedj[i]] = velocities[i]
         return dict_out
+
+    def getGripperContactFlag(self, need_check=1):
+        rospy.wait_for_service('/rdda_interface/check_contact')
+        try:
+            get_contact_flag = rospy.ServiceProxy('rdda_interface/check_contact', CheckContact)
+            res = get_contact_flag(need_check)
+            return res
+        except rospy.ServiceException, e:
+            print "Service call failed: %s" % e
 
 def jointStateToDict(msg):
     '''Convert JointState message to dictionary.'''
