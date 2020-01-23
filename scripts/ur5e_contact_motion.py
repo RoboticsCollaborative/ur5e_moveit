@@ -28,9 +28,9 @@ def main():
     pos_B = [-0.87946, -0.93835, 1.73203, -0.79074, 0.68918, 0.00084]
 
     # Start controller service.
-    rospy.wait_for_service('/controller_manager/list_controllers')
-    list_controllers = rospy.ServiceProxy('/controller_manager/list_controllers',
-                                          ListControllers)
+    # rospy.wait_for_service('/controller_manager/list_controllers')
+    # list_controllers = rospy.ServiceProxy('/controller_manager/list_controllers',
+    #                                       ListControllers)
 
     # Velocity controller class.
     arm = Arm()
@@ -59,29 +59,40 @@ def main():
     mGroup.group.stop()
     time.sleep(0.5)
 
+    ### STEP1: INITIALIZE AND MOVE FORWARD ###
+
     # Move forward with velocity control.
     pose_goal = mGroup.group.get_current_pose().pose
     pose_goal.position.y -= 0.4
-    raw_input('Hit enter to move forward')  # wait for user input
+    raw_input('Hit enter to move forward') #wait for user input
 
     # We want the Cartesian path to be interpolated at a resolution of 1 cm
     # which is why we will specify 0.01 as the eef_step in Cartesian
     # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
-    (plan, fraction) = mGroup.group.compute_cartesian_path(
-        waypoints=[pose_goal],  # waypoints to follow
-        eef_step=0.01,  # eef_step
-        jump_threshold=0.0)  # jump_threshold
-
     # Execute planned positions with velocity control
+    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
     if fraction == 1.0:
-        plan_positions = moveit_cart_plan_to_traj_list(plan)
-        arm.followTrajectory(
-            plan_positions,
-            gain=4.0,
-            maxDistToTarget=0.005,
-            gamma=0.97)
+        plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
+        arm.followTrajectory(plan_positions, gain=4.0, maxDistToTarget = 0.005, gamma=0.97)
     else:
         print('Trajectory not feasible. Fraction: {}'.format(fraction))
+    time.sleep(0.5)
+
+    ### STEP2: MOVE BACK TO SAFE POSITION ###
+
+    # Move back to safe position.
+    # raw_input('Hit enter to continue to safe position')
+    # print('')
+    # mGroup.group.go(safe_position, wait=True)
+    # mGroup.group.stop()
+    # time.sleep(0.5)
+
+    # Move to start position for a next turn.
+    # raw_input('Hit enter to continue to start position')
+    print('')
+    mGroup.group.go(pos_A, wait=True)
+    mGroup.group.stop()
+    time.sleep(0.5)
 
     print('Done')
 

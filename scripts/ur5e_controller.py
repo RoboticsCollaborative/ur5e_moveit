@@ -130,7 +130,12 @@ class Arm:
         print("Moving arm...")
         avg_vels = []
         max_vels = []
+
         for i, target in enumerate(traj):
+
+            if i >100:
+                break
+
             error = target - self.jointValues
 
             while np.max(np.abs(error)) > maxDistsToTarget[i]:
@@ -162,11 +167,11 @@ class Arm:
 
             print('[followTrajectory] Reached viapoint #', i, 'with error:', np.max(np.abs(error)), np.abs(error))
 
-        with open('/home/ur5e/.ros/avg_vels.txt', 'w') as f:
+        with open('/home/ethercat/.ros/avg_vels.txt', 'w') as f:
             for v in avg_vels:
                 f.write('%.8f\n' % v)
 
-        with open('/home/ur5e/.ros/max_vels.txt', 'w') as f:
+        with open('/home/ethercat/.ros/max_vels.txt', 'w') as f:
             for v in max_vels:
                 f.write('%.8f\n' % v)
 
