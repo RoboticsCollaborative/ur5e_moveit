@@ -15,19 +15,18 @@ from controller_manager_msgs.srv import ListControllers, LoadController
 
 from std_srvs.srv import Trigger
 
-from ur5e_controller import Arm
+from ur5e_controller_contact import Arm
 import ur5e_moveit_interface
 from ur5e_moveit_interface import all_close
 from ur5e_moveit_interface import MoveGroupInterface
 from ur5e_moveit_interface import moveit_cart_plan_to_traj_list
+from ur5e_moveit_interface import reconnect_ur_driver
 
 
 def main():
 
     ### MAKE SURE UR_DRIVER CONNECTED ###
-    rospy.wait_for_service('/ur_hardware_interface/resend_robot_program')
-    reconnect_trigger = rospy.ServiceProxy('/ur_hardware_interface/resend_robot_program', Trigger)
-    reconnect_trigger()
+    reconnect_ur_driver()
     time.sleep(0.5)
 
     # Preset joint configurations for start and safe positions.
@@ -80,7 +79,7 @@ def main():
     pose_goal.position.y = pose_A_y
     pose_goal.position.z = pose_A_z
     start_time = time.time()
-    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
+    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.001, 0.0)
     print('Planning Took {} seconds'.format(time.time()-start_time))
     mGroup.group.execute(plan, wait=True)
     mGroup.group.stop()
@@ -106,9 +105,7 @@ def main():
     time.sleep(0.1)
 
     ### Reconnect ur_driver ###
-    rospy.wait_for_service('/ur_hardware_interface/resend_robot_program')
-    reconnect_trigger = rospy.ServiceProxy('/ur_hardware_interface/resend_robot_program', Trigger)
-    reconnect_trigger()
+    reconnect_ur_driver()
     time.sleep(0.5)
 
     ### STEP2: MOVE BACK TO SAFE POSITION ###

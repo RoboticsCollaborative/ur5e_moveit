@@ -14,7 +14,8 @@ import geometry_msgs.msg
 # from math import pi
 from std_msgs.msg import String
 from controller_manager_msgs.srv import ListControllers, LoadController
-
+from moveit_commander.conversions import pose_to_list
+from ur5e_moveit_interface import reconnect_ur_driver
 
 from tf.transformations import rotation_matrix
 import trajectory_msgs.msg as traj_msgs
@@ -97,14 +98,14 @@ class MoveGroupTest(object):
         current_pose = self.group.get_current_pose().pose
         return all_close(pose, current_pose, 0.01)
 
-    def go(pose_goal):
-        '''Takes a pose and computes a linear path and executes it'''
-        (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
-        if fraction == 1.0:
-            plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-            arm.followTrajectory(plan_positions, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
-        else:
-            print('Trajectory not feasible. Fraction: {}'.format(fraction))
+    # def go(pose_goal):
+    #     '''Takes a pose and computes a linear path and executes it'''
+    #     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
+    #     if fraction == 1.0:
+    #         plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
+    #         arm.followTrajectory(plan_positions, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
+    #     else:
+    #         print('Trajectory not feasible. Fraction: {}'.format(fraction))
 
 def moveit_cart_plan_to_traj_list(plan):
     '''Iterates through a plan object to get just the position outputs
@@ -123,6 +124,10 @@ def moveit_cart_plan_to_traj_list(plan):
 
 def main():
     '''Move the arm a short distance'''
+
+    ### MAKE SURE UR_DRIVER CONNECTED ###
+    reconnect_ur_driver()
+    time.sleep(0.5)
 
     #preset joint configurations for start and safe psitions
     safe_position = [0.0, -1.0, 1.0, 0.0, np.pi/2, 0.0] #neutral, above the table
@@ -200,7 +205,7 @@ def main():
     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
     if fraction == 1.0:
         plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-        arm.followTrajectory(plan_positions, gain=10.0, maxDistToTarget = 0.005, gamma=0.97)
+        arm.followTrajectory(plan_positions, gain=5.0, maxDistToTarget = 0.005, gamma=0.97)
     else:
         print('Trajectory not feasible. Fraction: {}'.format(fraction))
 
@@ -209,6 +214,11 @@ def main():
     # points = plan.joint_trajectory.points
     # for point in points:
     #     plan_positions.append(point.positions)
+
+    ### Reconnect ur_driver ###
+    reconnect_ur_driver()
+    time.sleep(0.5)
+
     print('Done')
 
 
@@ -221,9 +231,6 @@ def main():
     # mGroup.group.set_max_velocity_scaling_factor(0.01)
     # mGroup.group.execute(plan, wait=True)
     # print(mGroup.group.get_jacobian_matrix())
-
-
-
 
 
 if __name__ == '__main__':

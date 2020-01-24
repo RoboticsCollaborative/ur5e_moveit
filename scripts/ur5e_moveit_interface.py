@@ -6,12 +6,13 @@ import sys
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
+from std_srvs.srv import Trigger
 from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 from controller_manager_msgs.srv import ListControllers, LoadController
 
-from ur5e_controller import Arm
+from ur5e_controller_contact import Arm
 
 
 def all_close(goal, actual, tolerance):
@@ -35,6 +36,12 @@ def all_close(goal, actual, tolerance):
         return all_close(pose_to_list(goal), pose_to_list(actual), tolerance)
 
     return True
+
+
+def reconnect_ur_driver():
+    rospy.wait_for_service('/ur_hardware_interface/resend_robot_program')
+    reconnect_trigger = rospy.ServiceProxy('/ur_hardware_interface/resend_robot_program', Trigger)
+    reconnect_trigger()
 
 
 def moveit_cart_plan_to_traj_list(plan):
