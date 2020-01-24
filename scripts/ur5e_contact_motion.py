@@ -13,6 +13,8 @@ from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 from controller_manager_msgs.srv import ListControllers, LoadController
 
+from std_srvs.srv import Trigger
+
 from ur5e_controller import Arm
 import ur5e_moveit_interface
 from ur5e_moveit_interface import all_close
@@ -22,10 +24,26 @@ from ur5e_moveit_interface import moveit_cart_plan_to_traj_list
 
 def main():
 
+    ### MAKE SURE UR_DRIVER CONNECTED ###
+    rospy.wait_for_service('/ur_hardware_interface/resend_robot_program')
+    reconnect_trigger = rospy.ServiceProxy('/ur_hardware_interface/resend_robot_program', Trigger)
+    reconnect_trigger()
+    time.sleep(0.5)
+
     # Preset joint configurations for start and safe positions.
-    safe_position = [0.0, -1.0, 1.0, 0.0, np.pi/2, 0.0]  # Neutral, above the table
-    pos_A = [0.40261, -0.9254, 1.70722, -0.78288, 1.97121, 0.00194]
-    pos_B = [-0.87946, -0.93835, 1.73203, -0.79074, 0.68918, 0.00084]
+    safe_position = [0.0, -1.0, 1.0, 0.0, np.pi/2, 0.0] #neutral, above the table
+    # pos_A = [0.40261, -0.9254, 1.70722, -0.78288, 1.97121, 0.00194]
+    # pos_B = [-0.87946, -0.93835, 1.73203, -0.79074, 0.68918, 0.00084]
+    pose_A_x = 0.538791827062
+    pose_A_y = 0.332075010152
+    pose_A_z = 0.126178557703 + 0.05
+    offset = 0.4
+
+    # Start orientation
+    # x: -0.999998581591
+    # y: -0.000991367569636
+    # z: -0.000602488281656
+    # w: 0.00122107108858
 
     # Start controller service.
     # rospy.wait_for_service('/controller_manager/list_controllers')
@@ -55,7 +73,16 @@ def main():
     # Start position using MoveIt.
     raw_input('Hit enter to continue to start position')
     print('')
-    mGroup.group.go(pos_A, wait=True)
+    # mGroup.group.go(pos_A, wait=True)
+    # mGroup.group.stop()
+    pose_goal = mGroup.group.get_current_pose().pose
+    pose_goal.position.x = pose_A_x
+    pose_goal.position.y = pose_A_y
+    pose_goal.position.z = pose_A_z
+    start_time = time.time()
+    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
+    print('Planning Took {} seconds'.format(time.time()-start_time))
+    mGroup.group.execute(plan, wait=True)
     mGroup.group.stop()
     time.sleep(0.5)
 
@@ -63,7 +90,7 @@ def main():
 
     # Move forward with velocity control.
     pose_goal = mGroup.group.get_current_pose().pose
-    pose_goal.position.y -= 0.4
+    pose_goal.position.y -= offset
     raw_input('Hit enter to move forward') #wait for user input
 
     # We want the Cartesian path to be interpolated at a resolution of 1 cm
@@ -73,24 +100,40 @@ def main():
     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
     if fraction == 1.0:
         plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-        arm.followTrajectory(plan_positions, gain=4.0, maxDistToTarget = 0.005, gamma=0.97)
+        arm.followTrajectory(plan_positions, gain=5.0, maxDistToTarget = 0.005, gamma=0.97)
     else:
         print('Trajectory not feasible. Fraction: {}'.format(fraction))
+    time.sleep(0.1)
+
+    ### Reconnect ur_driver ###
+    rospy.wait_for_service('/ur_hardware_interface/resend_robot_program')
+    reconnect_trigger = rospy.ServiceProxy('/ur_hardware_interface/resend_robot_program', Trigger)
+    reconnect_trigger()
     time.sleep(0.5)
 
     ### STEP2: MOVE BACK TO SAFE POSITION ###
 
-    # Move back to safe position.
-    # raw_input('Hit enter to continue to safe position')
+    # Move to start position for a next turn.
+    # raw_input('Hit enter to continue to start position')
     # print('')
-    # mGroup.group.go(safe_position, wait=True)
+    # mGroup.group.go(pos_A, wait=True)
     # mGroup.group.stop()
     # time.sleep(0.5)
 
-    # Move to start position for a next turn.
-    # raw_input('Hit enter to continue to start position')
+    # pose_goal = mGroup.group.get_current_pose().pose
+    pose_goal.position.x = pose_A_x
+    pose_goal.position.y = pose_A_y
+    pose_goal.position.z = pose_A_z
+    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.001, 0.0)
+    print('Planning Took {} seconds'.format(time.time()-start_time))
+    mGroup.group.execute(plan, wait=True)
+    mGroup.group.stop()
+    time.sleep(0.5)
+
+    # Move back to safe position.
+    raw_input('Hit enter to continue to safe position')
     print('')
-    mGroup.group.go(pos_A, wait=True)
+    mGroup.group.go(safe_position, wait=True)
     mGroup.group.stop()
     time.sleep(0.5)
 

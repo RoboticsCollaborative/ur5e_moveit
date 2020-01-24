@@ -34,7 +34,6 @@ class Arm:
         self.joint_limits = np.zeros((2,6))
         self.joint_limits[0,:] = -np.pi
         self.joint_limits[1,:] = np.pi
-        self.gripper_contact = [0, 0]
         # self.robot.SetDOFLimits(self.joint_limits[0], self.joint_limits[1])
 
         # Ordering of joints.
@@ -122,30 +121,52 @@ class Arm:
     def followTrajectory(self, traj, gain, maxDistToTarget, gamma=0.97, breakGamma=0.75, maxErrorMag=0.80, isBraking=True):
         '''Simple leaky integrator with error scaling and breaking.'''
 
-        first_half_len = int(len(traj)/2)
+        # first_half_len = int(len(traj)/2)
+        # gains = np.array([gain]*len(traj))
+        # gains[first_half_len : ] = np.linspace(gain, 0.8, len(traj) - first_half_len) #simple velocity profile planning
+
+        #trapizoidal profile
+        index_A = int(0.15*len(traj))
+        index_B = len(traj) - int(0.15*len(traj))
         gains = np.array([gain]*len(traj))
-        gains[first_half_len : ] = np.linspace(gain, 0.8, len(traj) - first_half_len)
+        print('Indices')
+        print(index_A)
+        print(index_B)
+        gains[:index_A] = np.linspace(0.8, gain, index_A)
+        gains[index_B:] = np.linspace( gain, 0.8, len(traj)-index_B)
+
         maxDistsToTarget = [maxDistToTarget]*(len(traj)-1) + [maxDistToTarget - 0.002]
 
         leakySum = 0.0
         command = np.zeros(6)
 
         print("Moving arm...")
-        avg_vels = []
-        max_vels = []
+        # avg_vels = []
+        # max_vels = []
+
+        """ Initialize flag to skip controller. """
+        contact_stop = False
+        """====================================="""
 
         for i, target in enumerate(traj):
 
-            gripper_contact = self.getGripperContactFlag(need_check=1)
-            if gripper_contact[0] == 1 or gripper_contact[1] == 1:
+            """========================================================="""
+            """ Skip controller. """
+            if contact_stop:
                 break
-            # if i >100:
-            #     break
+            """========================================================="""
 
             error = target - self.jointValues
 
             while np.max(np.abs(error)) > maxDistsToTarget[i]:
                 t0 = time()
+
+                """========================================================="""
+                """ Calling service to skip controller. """
+                gripper_contact = self.getGripperContactFlag(need_check=1)
+                if gripper_contact.contact_flag[0] == 1:
+                    contact_stop = True
+                """========================================================="""
 
                 # scale to maximum error
                 errorMag = np.linalg.norm(error)
@@ -154,13 +175,14 @@ class Arm:
                     error = scale * error
 
                 # integrate error
-                leakySum = gamma*leakySum + (1.0-gamma)*error
+                # leakySum = gamma*leakySum + (1.0-gamma)*error
+                leakySum = error
                 command = gains[i]*leakySum
 
                 self.publishVelocities(self.createJointVelocitiesDict(command))
 
-                avg_vels.append(np.mean(command))
-                max_vels.append(np.max(np.abs(command)))
+                # avg_vels.append(np.mean(command))
+                # max_vels.append(np.max(np.abs(command)))
 
                 # sleepTime = 0.008 - (time() - t0)
                 sleepTime = 0.008
@@ -173,13 +195,13 @@ class Arm:
 
             print('[followTrajectory] Reached viapoint #', i, 'with error:', np.max(np.abs(error)), np.abs(error))
 
-        with open('/home/ethercat/.ros/avg_vels.txt', 'w') as f:
-            for v in avg_vels:
-                f.write('%.8f\n' % v)
-
-        with open('/home/ethercat/.ros/max_vels.txt', 'w') as f:
-            for v in max_vels:
-                f.write('%.8f\n' % v)
+        # with open('/home/ur5e/.ros/avg_vels.txt', 'w') as f:
+        #     for v in avg_vels:
+        #         f.write('%.8f\n' % v)
+        #
+        # with open('/home/ur5e/.ros/max_vels.txt', 'w') as f:
+        #     for v in max_vels:
+        #         f.write('%.8f\n' % v)
 
         # Reduce velocity to 0.
         if isBraking:
@@ -189,15 +211,15 @@ class Arm:
         # set speed to 0.0
         self.publishVelocities(self.createJointVelocitiesDict(np.zeros(6)))
 
-#    def brakeSmooth(self, command, thresh=1e-6):
-#        diff = np.sum(command)
-#
-#        while np.max(np.abs(command)) > thresh:
-#            t0 = time()
-#            command = gamma*command
-#            self.publishVelocities(self.createJointVelocitiesDict(command))
-#            sleepTime = 0.008
-#            rospy.sleep(sleepTime)
+    def brakeSmooth(self, command, thresh=1e-6):
+        diff = np.sum(command)
+
+        while np.max(np.abs(command)) > thresh:
+            t0 = time()
+            command = gamma*command
+            self.publishVelocities(self.createJointVelocitiesDict(command))
+            sleepTime = 0.008
+            rospy.sleep(sleepTime)
 
     def brake(self, command, gamma, thresh=1e-6):
         while max(np.abs(command)) > thresh:
