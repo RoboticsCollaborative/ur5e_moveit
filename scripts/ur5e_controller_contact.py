@@ -166,6 +166,9 @@ class Arm:
                 gripper_contact = self.getGripperContactFlag(need_check=1)
                 if gripper_contact.contact_flag[0] == 1:
                     contact_stop = True
+                    command = 0.0*gains[i]*error
+                    self.publishVelocities(self.createJointVelocitiesDict(command))
+                    break
                 """========================================================="""
 
                 # scale to maximum error
@@ -176,8 +179,8 @@ class Arm:
 
                 # integrate error
                 # leakySum = gamma*leakySum + (1.0-gamma)*error
-                leakySum = error
-                command = gains[i]*leakySum
+                # command = gains[i]*leakySum
+                command = gains[i]*error
 
                 self.publishVelocities(self.createJointVelocitiesDict(command))
 
@@ -185,7 +188,7 @@ class Arm:
                 # max_vels.append(np.max(np.abs(command)))
 
                 # sleepTime = 0.008 - (time() - t0)
-                sleepTime = 0.008
+                sleepTime = 0.001
                 # print('  sleepTime:', sleepTime)
                 rospy.sleep(sleepTime)
                 # rospy.sleep(0.008)
