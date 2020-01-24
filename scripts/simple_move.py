@@ -14,7 +14,8 @@ import geometry_msgs.msg
 # from math import pi
 from std_msgs.msg import String
 from controller_manager_msgs.srv import ListControllers, LoadController
-
+from moveit_commander.conversions import pose_to_list
+from ur5e_moveit_interface import reconnect_ur_driver
 
 from tf.transformations import rotation_matrix
 import trajectory_msgs.msg as traj_msgs
@@ -97,14 +98,14 @@ class MoveGroupTest(object):
         current_pose = self.group.get_current_pose().pose
         return all_close(pose, current_pose, 0.01)
 
-    def go(pose_goal):
-        '''Takes a pose and computes a linear path and executes it'''
-        (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
-        if fraction == 1.0:
-            plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-            arm.followTrajectory(plan_positions, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
-        else:
-            print('Trajectory not feasible. Fraction: {}'.format(fraction))
+    # def go(pose_goal):
+    #     '''Takes a pose and computes a linear path and executes it'''
+    #     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.05, 0.0)
+    #     if fraction == 1.0:
+    #         plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
+    #         arm.followTrajectory(plan_positions, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
+    #     else:
+    #         print('Trajectory not feasible. Fraction: {}'.format(fraction))
 
 def moveit_cart_plan_to_traj_list(plan):
     '''Iterates through a plan object to get just the position outputs
@@ -124,15 +125,29 @@ def moveit_cart_plan_to_traj_list(plan):
 def main():
     '''Move the arm a short distance'''
 
+    ### MAKE SURE UR_DRIVER CONNECTED ###
+    reconnect_ur_driver()
+    time.sleep(0.5)
+
     #preset joint configurations for start and safe psitions
     safe_position = [0.0, -1.0, 1.0, 0.0, np.pi/2, 0.0] #neutral, above the table
     pos_A = [0.40261, -0.9254, 1.70722, -0.78288, 1.97121, 0.00194]
     pos_B = [-0.87946, -0.93835, 1.73203, -0.79074, 0.68918, 0.00084]
+    pose_A_x = 0.538791827062
+    pose_A_y = 0.332075010152
+    pose_A_z = 0.126178557703 + 0.05
+    offset = 0.4
+
+    #start orientation
+    # x: -0.999998581591
+    # y: -0.000991367569636
+    # z: -0.000602488281656
+    # w: 0.00122107108858
 
     #start controller service
-    rospy.wait_for_service('/controller_manager/list_controllers')
-    list_controllers = rospy.ServiceProxy('/controller_manager/list_controllers',
-                                            ListControllers)
+    # rospy.wait_for_service('/controller_manager/list_controllers')
+    # list_controllers = rospy.ServiceProxy('/controller_manager/list_controllers',
+    #                                         ListControllers)
     """To turn the robot back on use the '/ur_hardware_interface/resend_robot_program'
     service. Note, I could not get this to work"""
 
@@ -158,6 +173,8 @@ def main():
     # current_joints = mGroup.group.get_current_joint_values()
     # traj = [current_joints, safe_position]
     # arm.followTrajectory(traj, gain=2.0, maxDistToTarget = 0.005, gamma=0.97)
+
+    # mGroup.execute(plan, wait=True)
     mGroup.group.go(safe_position, wait=True) #plan and execute
     mGroup.group.stop() #ensure a stoped state (good practice)
     time.sleep(0.5)
@@ -165,18 +182,30 @@ def main():
     #start position uing moveit
     raw_input('Hit enter to continue to start position')
     print('')
-    mGroup.group.go(pos_A, wait=True)
+    pose_goal = mGroup.group.get_current_pose().pose
+    pose_goal.position.x = pose_A_x
+    pose_goal.position.y = pose_A_y
+    pose_goal.position.z = pose_A_z
+    start_time = time.time()
+    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.001, 0.0)
+    print('Planning Took {} seconds'.format(time.time()-start_time))
+    mGroup.group.execute(plan, wait=True)
+
+    # mGroup.group.go(pos_A, wait=True)
     mGroup.group.stop()
     time.sleep(0.5)
+    # print(mGroup.group.get_current_pose())
+    # print(mGroup.group.get_current_pose().pose)
+
 
     #move forward with velocity control
     pose_goal = mGroup.group.get_current_pose().pose
-    pose_goal.position.y -= 0.4
+    pose_goal.position.y -= offset
     raw_input('Hit enter to move forward') #wait for user input
     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
     if fraction == 1.0:
         plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-        arm.followTrajectory(plan_positions, gain=4.0, maxDistToTarget = 0.005, gamma=0.97)
+        arm.followTrajectory(plan_positions, gain=10.0, maxDistToTarget = 0.005, gamma=0.97)
     else:
         print('Trajectory not feasible. Fraction: {}'.format(fraction))
 
@@ -185,6 +214,11 @@ def main():
     # points = plan.joint_trajectory.points
     # for point in points:
     #     plan_positions.append(point.positions)
+
+    ### Reconnect ur_driver ###
+    reconnect_ur_driver()
+    time.sleep(0.5)
+
     print('Done')
 
 
@@ -197,9 +231,6 @@ def main():
     # mGroup.group.set_max_velocity_scaling_factor(0.01)
     # mGroup.group.execute(plan, wait=True)
     # print(mGroup.group.get_jacobian_matrix())
-
-
-
 
 
 if __name__ == '__main__':

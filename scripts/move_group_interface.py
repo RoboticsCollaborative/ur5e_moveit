@@ -32,10 +32,10 @@ def all_close(goal, actual, tolerance):
     return True
 
 
-class MoveGroupInterface(object):
+class MoveGroupInterfaceTutorial(object):
 
     def __init__(self):
-        super(MoveGroupInterface, self).__init__()
+        super(MoveGroupInterfaceTutorial, self).__init__()
 
         ## SETUP
         # First initialize `moveit_commander`_ and a `rospy`_ node:
@@ -51,9 +51,9 @@ class MoveGroupInterface(object):
 
         # Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         # to one group of joints.  In this case the group is the joints in the UR5e
-        # arm so we set ``group_name = ur5e``. If you are using a different robot,
+        # arm so we set ``group_name = manipulator``. If you are using a different robot,
         # you should change this value to the name of your robot arm planning group.
-        # This interface can be used to plan and execute motions on the Panda:
+        # This interface can be used to plan and execute motions on the UR5e:
         group_name = "manipulator"
         group = moveit_commander.MoveGroupCommander(group_name)
 
@@ -186,7 +186,7 @@ def main():
         print "============ Press `Enter` to begin the tutorial by " \
               "setting up the moveit_commander (press ctrl-d to exit) ..."
         raw_input()
-        interface = MoveGroupInterface()
+        interface = MoveGroupInterfaceTutorial()
 
         print "============ Press `Enter` to execute a movement using a joint state goal ..."
         raw_input()

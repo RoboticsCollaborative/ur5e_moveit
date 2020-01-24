@@ -12,6 +12,8 @@ from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import geometry_msgs.msg as geometry_msgs
 
+from rdda_interface.srv import CheckContact
+
 # ur_kinematics (IK)
 #import ur_kin_py
 #from ur_kinematics import ur_kin_py
@@ -119,9 +121,9 @@ class Arm:
     def followTrajectory(self, traj, gain, maxDistToTarget, gamma=0.97, breakGamma=0.75, maxErrorMag=0.80, isBraking=True):
         '''Simple leaky integrator with error scaling and breaking.'''
 
-        first_half_len = int(len(traj)/2)
-        gains = np.array([gain]*len(traj))
-        gains[first_half_len : ] = np.linspace(gain, 0.8, len(traj) - first_half_len) #simple velocity profile planning
+        # first_half_len = int(len(traj)/2)
+        # gains = np.array([gain]*len(traj))
+        # gains[first_half_len : ] = np.linspace(gain, 0.8, len(traj) - first_half_len) #simple velocity profile planning
 
         #trapizoidal profile
         index_A = int(0.15*len(traj))
@@ -141,11 +143,33 @@ class Arm:
         print("Moving arm...")
         # avg_vels = []
         # max_vels = []
+
+        """ Initialize flag to skip controller. """
+        contact_stop = False
+        """====================================="""
+
         for i, target in enumerate(traj):
+
+            """========================================================="""
+            """ Skip controller. """
+            if contact_stop:
+                break
+            """========================================================="""
+
             error = target - self.jointValues
 
             while np.max(np.abs(error)) > maxDistsToTarget[i]:
                 t0 = time()
+
+                """========================================================="""
+                """ Calling service to skip controller. """
+                gripper_contact = self.getGripperContactFlag(need_check=1)
+                if gripper_contact.contact_flag[0] == 1:
+                    contact_stop = True
+                    command = 0.0*gains[i]*error
+                    self.publishVelocities(self.createJointVelocitiesDict(command))
+                    break
+                """========================================================="""
 
                 # scale to maximum error
                 errorMag = np.linalg.norm(error)
@@ -190,15 +214,15 @@ class Arm:
         # set speed to 0.0
         self.publishVelocities(self.createJointVelocitiesDict(np.zeros(6)))
 
-    def brakeSmooth(self, command, thresh=1e-6):
-        diff = np.sum(command)
-
-        while np.max(np.abs(command)) > thresh:
-            t0 = time()
-            command = gamma*command
-            self.publishVelocities(self.createJointVelocitiesDict(command))
-            sleepTime = 0.008
-            rospy.sleep(sleepTime)
+    # def brakeSmooth(self, command, thresh=1e-6):
+    #     diff = np.sum(command)
+    #
+    #     while np.max(np.abs(command)) > thresh:
+    #         t0 = time()
+    #         command = gamma*command
+    #         self.publishVelocities(self.createJointVelocitiesDict(command))
+    #         sleepTime = 0.008
+    #         rospy.sleep(sleepTime)
 
     def brake(self, command, gamma, thresh=1e-6):
         while max(np.abs(command)) > thresh:
@@ -253,6 +277,15 @@ class Arm:
         for i in range(len(velocities)):
             dict_out[self.joint_names_speedj[i]] = velocities[i]
         return dict_out
+
+    def getGripperContactFlag(self, need_check=1):
+        rospy.wait_for_service('/rdda_interface/check_contact')
+        try:
+            get_contact_flag = rospy.ServiceProxy('rdda_interface/check_contact', CheckContact)
+            res = get_contact_flag(need_check)
+            return res
+        except rospy.ServiceException, e:
+            print "Service call failed: %s" % e
 
 def jointStateToDict(msg):
     '''Convert JointState message to dictionary.'''
