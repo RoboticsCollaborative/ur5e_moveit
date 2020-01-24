@@ -5,16 +5,6 @@ import time
 import numpy as np
 import sys
 
-import moveit_commander
-import moveit_msgs.msg
-import geometry_msgs.msg
-from math import pi
-from std_msgs.msg import String
-from moveit_commander.conversions import pose_to_list
-from controller_manager_msgs.srv import ListControllers, LoadController
-
-from std_srvs.srv import Trigger
-
 from ur5e_controller_contact import Arm
 import ur5e_moveit_interface
 from ur5e_moveit_interface import all_close
@@ -80,52 +70,51 @@ def main():
     pose_goal.position.z = pose_A_z
     start_time = time.time()
     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.001, 0.0)
-    print('Planning Took {} seconds'.format(time.time()-start_time))
+    print('Planning Took {} seconds'.format(time.time() - start_time))
     mGroup.group.execute(plan, wait=True)
     mGroup.group.stop()
     time.sleep(0.5)
 
-    ### STEP1: INITIALIZE AND MOVE FORWARD ###
 
-    # Move forward with velocity control.
-    pose_goal = mGroup.group.get_current_pose().pose
-    pose_goal.position.y -= offset
-    raw_input('Hit enter to move forward') #wait for user input
+    while ('' == raw_input("Move forward (Enter) or finish (other keys) ?")):
+        print ('continue')
 
-    # We want the Cartesian path to be interpolated at a resolution of 1 cm
-    # which is why we will specify 0.01 as the eef_step in Cartesian
-    # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
-    # Execute planned positions with velocity control
-    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
-    if fraction == 1.0:
-        plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-        arm.followTrajectory(plan_positions, gain=5.0, maxDistToTarget = 0.005, gamma=0.97)
-    else:
-        print('Trajectory not feasible. Fraction: {}'.format(fraction))
-    time.sleep(0.1)
+        ### STEP1: INITIALIZE AND MOVE FORWARD ###
 
-    ### Reconnect ur_driver ###
-    reconnect_ur_driver()
-    time.sleep(0.5)
+        # Move forward with velocity control.
+        pose_goal = mGroup.group.get_current_pose().pose
+        pose_goal.position.y -= offset
+        raw_input('Hit enter to move forward') #wait for user input
 
-    ### STEP2: MOVE BACK TO SAFE POSITION ###
+        # We want the Cartesian path to be interpolated at a resolution of 1 cm
+        # which is why we will specify 0.01 as the eef_step in Cartesian
+        # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
+        # Execute planned positions with velocity control
+        (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
+        if fraction == 1.0:
+            plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
+            arm.followTrajectory(plan_positions, gain=5.0, maxDistToTarget = 0.005, gamma=0.97)
+        else:
+            print('Trajectory not feasible. Fraction: {}'.format(fraction))
+        time.sleep(0.1)
 
-    # Move to start position for a next turn.
-    # raw_input('Hit enter to continue to start position')
-    # print('')
-    # mGroup.group.go(pos_A, wait=True)
-    # mGroup.group.stop()
-    # time.sleep(0.5)
+        ### Reconnect ur_driver ###
+        reconnect_ur_driver()
+        time.sleep(0.5)
 
-    # pose_goal = mGroup.group.get_current_pose().pose
-    pose_goal.position.x = pose_A_x
-    pose_goal.position.y = pose_A_y
-    pose_goal.position.z = pose_A_z
-    (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.001, 0.0)
-    print('Planning Took {} seconds'.format(time.time()-start_time))
-    mGroup.group.execute(plan, wait=True)
-    mGroup.group.stop()
-    time.sleep(0.5)
+        ### STEP2: MOVE BACK TO SAFE POSITION ###
+
+        # pose_goal = mGroup.group.get_current_pose().pose
+        pose_goal.position.x = pose_A_x
+        pose_goal.position.y = pose_A_y
+        pose_goal.position.z = pose_A_z
+        start_time = time.time()
+        (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.001, 0.0)
+        print('Planning Took {} seconds'.format(time.time()-start_time))
+        mGroup.group.execute(plan, wait=True)
+        mGroup.group.stop()
+        time.sleep(0.5)
+
 
     # Move back to safe position.
     raw_input('Hit enter to continue to safe position')

@@ -205,7 +205,7 @@ def main():
     (plan, fraction) = mGroup.group.compute_cartesian_path([pose_goal], 0.01, 0.0)
     if fraction == 1.0:
         plan_positions = moveit_cart_plan_to_traj_list(plan) #extract positions
-        arm.followTrajectory(plan_positions, gain=5.0, maxDistToTarget = 0.005, gamma=0.97)
+        arm.followTrajectory(plan_positions, gain=10.0, maxDistToTarget = 0.005, gamma=0.97)
     else:
         print('Trajectory not feasible. Fraction: {}'.format(fraction))
 

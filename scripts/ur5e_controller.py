@@ -154,8 +154,9 @@ class Arm:
                     error = scale * error
 
                 # integrate error
-                leakySum = gamma*leakySum + (1.0-gamma)*error
-                command = gains[i]*leakySum
+                # leakySum = gamma*leakySum + (1.0-gamma)*error
+                # command = gains[i]*leakySum
+                command = gains[i]*error
 
                 self.publishVelocities(self.createJointVelocitiesDict(command))
 
@@ -163,7 +164,7 @@ class Arm:
                 # max_vels.append(np.max(np.abs(command)))
 
                 # sleepTime = 0.008 - (time() - t0)
-                sleepTime = 0.008
+                sleepTime = 0.001
                 # print('  sleepTime:', sleepTime)
                 rospy.sleep(sleepTime)
                 # rospy.sleep(0.008)
